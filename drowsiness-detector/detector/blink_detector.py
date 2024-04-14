@@ -6,8 +6,8 @@ from scipy.spatial import distance as dist
 from imutils import face_utils
 import matplotlib.pyplot as plt
 
-predictor = dlib.shape_predictor("/Users/phuc1403/projects/simple-blink-detector/detector/shape_predictor_68_face_landmarks.dat")
-face_cascade = cv2.CascadeClassifier('/Users/phuc1403/projects/simple-blink-detector/detector/haarcascade_frontalface_alt.xml')
+predictor = dlib.shape_predictor("./shape_predictor_68_face_landmarks.dat")
+face_cascade = cv2.CascadeClassifier('./haarcascade_frontalface_alt.xml')
 
 # detect the face rectangle 
 def detect(img, cascade = face_cascade , minimumFeatureSize=(20, 20)):
@@ -116,7 +116,7 @@ def cnnPreprocess(img):
 def main():
 	# open the camera,load the cnn model 
 	camera = cv2.VideoCapture(0)
-	model = load_model('/Users/phuc1403/projects/simple-blink-detector/detector/blinkModel.hdf5')
+	# model = load_model('/Users/phuc1403/projects/simple-blink-detector/detector/blinkModel.hdf5')
 	
 	# blinks is the number of total blinks ,close_counter
 	# the counter for consecutive close predictions
@@ -134,15 +134,15 @@ def main():
 		else:
 			left_eye,right_eye, left_eye_rect, right_eye_rect = eyes
    
-		left_eye_rect[0] -= 20  # Giảm tọa độ x bên trái
-		left_eye_rect[1] -= 20  # Giảm tọa độ y bên trên
-		left_eye_rect[2] += 20  # Tăng tọa độ x bên phải
-		left_eye_rect[3] += 20  # Tăng tọa độ y bên dưới
+		# left_eye_rect[0] -= 20  # Giảm tọa độ x bên trái
+		# left_eye_rect[1] -= 20  # Giảm tọa độ y bên trên
+		# left_eye_rect[2] += 20  # Tăng tọa độ x bên phải
+		# left_eye_rect[3] += 20  # Tăng tọa độ y bên dưới
 
-		right_eye_rect[0] -= 20  # Giảm tọa độ x bên trái
-		right_eye_rect[1] -= 20  # Giảm tọa độ y bên trên
-		right_eye_rect[2] += 20  # Tăng tọa độ x bên phải
-		right_eye_rect[3] += 20  # Tăng tọa độ y bên dưới
+		# right_eye_rect[0] -= 20  # Giảm tọa độ x bên trái
+		# right_eye_rect[1] -= 20  # Giảm tọa độ y bên trên
+		# right_eye_rect[2] += 20  # Tăng tọa độ x bên phải
+		# right_eye_rect[3] += 20  # Tăng tọa độ y bên dưới
 
 		# Vẽ hộp giới hạn xung quanh mắt trái trên hình ảnh gốc
 		cv2.rectangle(frame, (left_eye_rect[0], left_eye_rect[1]), (left_eye_rect[2], left_eye_rect[3]), (0, 255, 0), 2)
@@ -151,24 +151,24 @@ def main():
 
 
 		# average the predictions of the two eyes 
-		prediction = (model.predict(cnnPreprocess(left_eye)) + model.predict(cnnPreprocess(right_eye)))/2.0
+		# prediction = (model.predict(cnnPreprocess(left_eye)) + model.predict(cnnPreprocess(right_eye)))/2.0
 			
-		# blinks
-		# if the eyes are open reset the counter for close eyes
-		if prediction > 0.5 :
-			state = 'open'
-			close_counter = 0
-		else:
-			state = 'close'
-			close_counter += 1
+		# # blinks
+		# # if the eyes are open reset the counter for close eyes
+		# if prediction > 0.5 :
+		# 	state = 'open'
+		# 	close_counter = 0
+		# else:
+		# 	state = 'close'
+		# 	close_counter += 1
 		
-		# if the eyes are open and previousle were closed
-		# for sufficient number of frames then increcement 
-		# the total blinks
-		if state == 'open' and mem_counter > 1:
-			blinks += 1
-		# keep the counter for the next loop 
-		mem_counter = close_counter 
+		# # if the eyes are open and previousle were closed
+		# # for sufficient number of frames then increcement 
+		# # the total blinks
+		# if state == 'open' and mem_counter > 1:
+		# 	blinks += 1
+		# # keep the counter for the next loop 
+		# mem_counter = close_counter 
 
 		# draw the total number of blinks on the frame along with
 		# the state for the frame
