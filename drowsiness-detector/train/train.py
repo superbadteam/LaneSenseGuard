@@ -9,7 +9,7 @@ from keras.activations import relu
 from keras.optimizers import Adam
 from sklearn.model_selection import train_test_split
 #we will use images 26x34x1 (1 is for grayscale images)
-height = 34
+height = 26
 width = 34
 dims = 1
 
@@ -31,7 +31,7 @@ def readCsv(path):
 		img = row['image']
 		img = img.strip('[').strip(']').split(', ')
 		im = np.array(img,dtype=np.uint8)
-		im = im.reshape((34,34))
+		im = im.reshape((26,34))
 		im = np.expand_dims(im, axis=2)
 		imgs[i] = im
 
@@ -80,8 +80,11 @@ def makeModel():
 
 def main():
 
-	# xTrain ,yTrain = readCsv('/Users/phuc1403/projects/Driver-Drowsiness-Detection-using-Deep-Learning/data/dataset3.csv')
-
+	xTrain ,yTrain = readCsv('/Users/phuc1403/projects/simple-blink-detector/drowsiness-detector/train/dataset.csv')
+	plt.imshow(xTrain[0], cmap='gray')  # Đặt cmap='gray' nếu hình ảnh là ảnh xám
+	plt.title('Example Image')
+	plt.axis('off')  # Tắt trục
+	plt.show()
 	# xTrain ,yTrain = readCsv('/Users/phuc1403/projects/Driver-Drowsiness-Detection-using-Deep-Learning/data/dataset3.csv')
 
 	def randomize_data(x_data, y_data):
