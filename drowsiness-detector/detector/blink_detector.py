@@ -1,10 +1,8 @@
 import cv2
 import dlib
 import numpy as np
-from keras.models import load_model
-from scipy.spatial import distance as dist
-from imutils import face_utils
-import matplotlib.pyplot as plt
+import os
+import time
 
 predictor = dlib.shape_predictor("./shape_predictor_68_face_landmarks.dat")
 face_cascade = cv2.CascadeClassifier('./haarcascade_frontalface_alt.xml')
@@ -16,7 +14,7 @@ def detect(img, cascade = face_cascade , minimumFeatureSize=(20, 20)):
     rects = cascade.detectMultiScale(img, scaleFactor=1.3, minNeighbors=1, minSize=minimumFeatureSize)
     
     # if it doesn't return rectangle return array
-    # with zero lenght
+    # with zero length
     if len(rects) == 0:
         return []
 
@@ -68,7 +66,7 @@ def cropEyes(frame):
 	# compute the width of the eye
 	lw = (leftEye[3][0] - leftEye[0][0])
 
-	# we want the image for the cnn to be (26,34)
+	# we want the image for the CNN to be (26,34)
 	# so we add the half of the difference at x and y
 	# axis from the width at height respectively left-right
 	# and up-down 
@@ -113,8 +111,21 @@ def cnnPreprocess(img):
 	img = np.expand_dims(img, axis=0)
 	return img
 
+def save_images(left_eye_image, right_eye_image, folder):
+    if not os.path.exists(folder):
+        os.makedirs(folder)
+    
+    # Create unique filenames
+    timestamp = str(int(time.time()))
+    left_filename = os.path.join(folder, f"left_eye_{timestamp}.jpg")
+    right_filename = os.path.join(folder, f"right_eye_{timestamp}.jpg")
+    
+    # Save images
+    cv2.imwrite(left_filename, left_eye_image)
+    cv2.imwrite(right_filename, right_eye_image)
+
 def main():
-	# open the camera,load the cnn model 
+	# open the camera
 	camera = cv2.VideoCapture(0)
 	# model = load_model('/Users/phuc1403/projects/simple-blink-detector/detector/blinkModel.hdf5')
 	
@@ -124,7 +135,6 @@ def main():
 	close_counter = blinks = mem_counter= 0
 	state = ''
 	while True:
-		
 		ret, frame = camera.read()
 		
 		# detect eyes
@@ -132,7 +142,7 @@ def main():
 		if eyes is None:
 			continue
 		else:
-			left_eye,right_eye, left_eye_rect, right_eye_rect = eyes
+			left_eye,right_eye, _, _ = eyes
    
 		# left_eye_rect[0] -= 20  # Giảm tọa độ x bên trái
 		# left_eye_rect[1] -= 20  # Giảm tọa độ y bên trên
@@ -149,45 +159,21 @@ def main():
 		# Vẽ hộp giới hạn xung quanh mắt phải trên hình ảnh gốc
 		cv2.rectangle(frame, (right_eye_rect[0], right_eye_rect[1]), (right_eye_rect[2], right_eye_rect[3]), (0, 255, 0), 2)
 
-
-		# average the predictions of the two eyes 
-		# prediction = (model.predict(cnnPreprocess(left_eye)) + model.predict(cnnPreprocess(right_eye)))/2.0
-			
-		# # blinks
-		# # if the eyes are open reset the counter for close eyes
-		# if prediction > 0.5 :
-		# 	state = 'open'
-		# 	close_counter = 0
-		# else:
-		# 	state = 'close'
-		# 	close_counter += 1
-		
-		# # if the eyes are open and previousle were closed
-		# # for sufficient number of frames then increcement 
-		# # the total blinks
-		# if state == 'open' and mem_counter > 1:
-		# 	blinks += 1
-		# # keep the counter for the next loop 
-		# mem_counter = close_counter 
-
-		# draw the total number of blinks on the frame along with
-		# the state for the frame
-		cv2.putText(frame, "Blinks: {}".format(blinks), (10, 30),
-			cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-		cv2.putText(frame, "State: {}".format(state), (300, 30),
-			cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-		
-		# show the frame
 		cv2.imshow('blinks counter', frame)
-		key = cv2.waitKey(1) & 0xFF
+		key = cv2.waitKey(1)
 
-		# if the `q` key was pressed, break from the loop
 		if key == ord('q'):
 			break
-	# do a little clean up
+		
+		# Delay for 1 second
+		if close_counter == 10:  # 10 frames = approximately 1 second at 10 fps
+			save_images(left_eye, right_eye, "eye_images")
+			close_counter = 0  # Reset the counter after saving images
+
+		close_counter += 1
+
 	cv2.destroyAllWindows()
 	del(camera)
-
 
 if __name__ == '__main__':
 	main()
