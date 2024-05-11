@@ -1,3 +1,5 @@
 .venv
 test_video
 video_result
+img_result
+lane_img
