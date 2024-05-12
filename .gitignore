@@ -57,7 +57,11 @@ coverage.xml
 docs/_build/
 
 exacted 
+<<<<<<< HEAD
 lane
 
 .DS_Store
 lane_data
+=======
+lane
+>>>>>>> 8335098 (fix: remove dataset)
