@@ -58,6 +58,7 @@ docs/_build/
 
 exacted 
 lane
+train_data
 
 .DS_Store
 lane_data
