@@ -4,7 +4,7 @@ import urllib.request
 import numpy as np
 
 # cam2 = "http://169.254.142.134:8000/stream.mjpg"
-cam2 = "http://169.254.142.134:8080/?action=stream"
+cam2 = "http://192.168.137.9:8080/?action=stream"
 stream = urllib.request.urlopen(cam2)
 bytes = bytes()
 while True:
