@@ -10,40 +10,37 @@ async def handler(websocket, path):
     print(f"Client connected: {websocket.remote_address}")
     try:
         async for message in websocket:
-            # Xử lý các thông điệp từ client nếu cần
-            pass
+            # Chuyển đổi frame ảnh từ client sang dạng np.array
+            nparr = np.frombuffer(message, np.uint8)
+            frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            
+            # Gửi frame tới tất cả các client khác
+            await send_frame_to_clients(frame, websocket)
     except websockets.ConnectionClosed:
         print(f"Client disconnected: {websocket.remote_address}")
     finally:
         clients.discard(websocket)  # Sử dụng discard thay vì remove để tránh KeyError
 
-async def send_frame_to_clients(frame_data):
+async def send_frame_to_clients(frame, sender):
+    # Nén khung hình thành dạng jpg để gửi đi
+    ret, buffer = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), 50])
+    frame_data = buffer.tobytes()
+    
     for client in clients.copy():
-        try:
-            await client.send(frame_data)
-        except websockets.ConnectionClosed:
-            print(f"Removing client {client.remote_address}")
-            clients.discard(client)  # Sử dụng discard thay vì remove để tránh KeyError
-        except Exception as e:
-            print(f"Error sending to client: {e}")
-            clients.discard(client)  # Sử dụng discard thay vì remove để tránh KeyError
-
-async def process_frames():
-    bytes_data = b''
-    stream = cv2.VideoCapture(0)  # Sử dụng webcam cho stream
-    while True:
-        ret, frame = stream.read()
-        if not ret:
-            continue
-        ret, buffer = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
-        frame_data = buffer.tobytes()
-        await send_frame_to_clients(frame_data)
-        await asyncio.sleep(0.1)  # Điều chỉnh thời gian ngủ tùy theo yêu cầu của bạn
+        if client != sender:  # Không gửi lại cho client đã gửi
+            try:
+                await client.send(frame_data)
+            except websockets.ConnectionClosed:
+                print(f"Removing client {client.remote_address}")
+                clients.discard(client)  # Sử dụng discard thay vì remove để tránh KeyError
+            except Exception as e:
+                print(f"Error sending to client: {e}")
+                clients.discard(client)  # Sử dụng discard thay vì remove để tránh KeyError
 
 async def main():
     websocket_server = await websockets.serve(handler, "0.0.0.0", 5001)
     print('WebSocket Server listening on ws://0.0.0.0:5001')
-    await asyncio.gather(websocket_server.wait_closed(), process_frames())
+    await websocket_server.wait_closed()
 
 if __name__ == '__main__':
     try:
