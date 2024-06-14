@@ -62,3 +62,6 @@ train_data
 
 .DS_Store
 lane_data
+train_data
+
+model_trained
