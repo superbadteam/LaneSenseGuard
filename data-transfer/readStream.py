@@ -181,6 +181,7 @@ def crop_output(image):
     image = cv2.resize(image, (160, 60))
     return image
 
+
 # lane_model = keras.models.load_model(r'C:\Users\nguye\OneDrive\Desktop\U\kì 6\PBL5\LaneSenseGuard\model_trained\model_trained_v4.h5')
 lane_model = keras.models.load_model('././model_trained/model_trained_v4.h5')
 
@@ -188,8 +189,10 @@ dict = {'true': [1, 0], 'false': [0, 1]}
 name_result = ['right', 'wrong']
 frame_counter = 0
 frame_per_predict = 24
+
 cam2 = "http://192.168.137.9:8080/?action=stream"
 # cam2 = "http://192.168.137.9:8080/?action=stream"
+
 
 stream = urllib.request.urlopen(cam2)
 bytes = bytes()
@@ -198,9 +201,11 @@ import websockets
 import asyncio
 async def send_and_receive():
     global bytes, frame_counter
+
     uri = "ws://192.168.137.9:12345"
     uri2 = "ws://103.77.246.238:5001"
     async with websockets.connect(uri) as websocket_1, websockets.connect(uri2) as websocket_2:
+
         while True:
             bytes += stream.read(1024)
             a = bytes.find(b'\xff\xd8')
@@ -219,6 +224,7 @@ async def send_and_receive():
                         
                         result = name_result[np.argmax(lane_model.predict(image.reshape(-1, 60, 160, 1)))]
                         print(result)
+
                         await websocket_1.send("lane:" + result)
                         response = await websocket_1.recv()
                     vertices = np.array([[(130, 390),(280, 305), (350, 305), (515,390)]], dtype=np.int32) # (480, 640, 3)
@@ -228,12 +234,15 @@ async def send_and_receive():
                     i = cv2.resize(i, (320, 240))
                     _, buffer = cv2.imencode('.jpg', i, [int(cv2.IMWRITE_JPEG_QUALITY), 50])
                     await websocket_2.send(buffer.tobytes())
+
                     cv2.imshow('i', i)
                     
                     if cv2.waitKey(1) == 27:
                         exit(0)
                 except Exception as ex:
+
                     print(ex)
+
                     pass
                 
 

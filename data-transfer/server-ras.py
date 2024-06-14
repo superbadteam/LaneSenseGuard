@@ -1,5 +1,6 @@
 import asyncio
 import websockets
+
 import json
 import time
 import RPi.GPIO as GPIO
@@ -101,6 +102,7 @@ async def handler(websocket, path):
     connected_clients.add(websocket)
     print('Got connection from', websocket.remote_address)
     try:
+
         async for message in websocket:
             for client in connected_clients:
                 await client.send(message)
@@ -111,6 +113,7 @@ async def handler(websocket, path):
                 handle_data_from_AI_server(data)
             except Exception as e:
                 pass
+
 
     except websockets.ConnectionClosed:
         print('Client disconnected')
@@ -184,6 +187,7 @@ async def run_client():
                 # else:
                 #     print('Not a system message', data[0].strip(),"system")
                 # print('Received from server:', data[0], data[1])
+
         except websockets.ConnectionClosed:
             print("Connection closed")
         except Exception as e:
@@ -193,10 +197,12 @@ async def run_client():
 
 async def main():
     init_values()
+
     server_task = asyncio.create_task(run_server())
     client_task = asyncio.create_task(run_client())
 
     await asyncio.gather(server_task, client_task)
+
 
 def init_values():
     GPIO.output(BUZZER_PIN, 0)
@@ -209,5 +215,7 @@ if __name__ == "__main__":
         asyncio.run(main())
     except KeyboardInterrupt:
         print("Interrupted by user. Shutting down...")
+
     finally:
         GPIO.cleanup()
+
