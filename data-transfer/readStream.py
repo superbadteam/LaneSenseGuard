@@ -193,6 +193,17 @@ bytes = bytes()
 
 import websockets
 import asyncio
+import socket
+
+# Địa chỉ IP và cổng của server TCP
+server_ip = '103.77.246.238'
+server_port = 5002
+
+# Set up TCP socket
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.connect((server_ip, server_port))
+
+
 async def send_and_receive():
     global bytes, frame_counter
     uri = "ws://192.168.145.37:12345"
@@ -220,6 +231,10 @@ async def send_and_receive():
                     vertices = np.array([[(130, 390),(280, 305), (350, 305), (515,390)]], dtype=np.int32) # (480, 640, 3)
                     i = cv2.polylines(i, vertices, isClosed=True, color=(0, 255, 0), thickness=2)
                     # print(i.shape)
+                    # Nén ảnh và gửi qua TCP
+                    _, buffer = cv2.imencode('.jpg', i, [int(cv2.IMWRITE_JPEG_QUALITY), 50])
+                    sock.sendall(buffer.tobytes())
+
                     cv2.imshow('i', i)
                     
                     if cv2.waitKey(1) == 27:
