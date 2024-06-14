@@ -4,7 +4,7 @@ import numpy as np
 import socket
 
 # URL của camera stream
-cam2 = "http://169.254.142.134:8080/?action=stream"
+cam2 = "http://192.168.145.37:8080/?action=stream"
 stream = urllib.request.urlopen(cam2)
 bytes_data = bytes()
 
@@ -28,5 +28,5 @@ while True:
         if frame is not None:
             # Resize the frame to reduce the size
             frame = cv2.resize(frame, (320, 240))
-            _, buffer = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
+            _, buffer = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), 50])
             sock.sendall(buffer.tobytes())
