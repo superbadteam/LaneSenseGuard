@@ -1,13 +1,13 @@
 import cv2
 import dlib
 import numpy as np
-from keras.models import load_model
+from tensorflow.keras.models import load_model
 from scipy.spatial import distance as dist
 from imutils import face_utils
 import matplotlib.pyplot as plt
 
-predictor = dlib.shape_predictor("/Users/phuc1403/projects/simple-blink-detector/detector/shape_predictor_68_face_landmarks.dat")
-face_cascade = cv2.CascadeClassifier('/Users/phuc1403/projects/simple-blink-detector/detector/haarcascade_frontalface_alt.xml')
+predictor = dlib.shape_predictor("/Users/phuc1403/projects/simple-blink-detector/drowsiness-detector/models/shape_predictor_68_face_landmarks.dat")
+face_cascade = cv2.CascadeClassifier('/Users/phuc1403/projects/simple-blink-detector/drowsiness-detector/models/haarcascade_frontalface_alt.xml')
 
 # detect the face rectangle 
 def detect(img, cascade = face_cascade , minimumFeatureSize=(20, 20)):
@@ -116,7 +116,7 @@ def cnnPreprocess(img):
 def main():
 	# open the camera,load the cnn model 
 	camera = cv2.VideoCapture(0)
-	model = load_model('/Users/phuc1403/projects/simple-blink-detector/detector/blinkModel.hdf5')
+	model = load_model('/Users/phuc1403/projects/simple-blink-detector/drowsiness-detector/models/vgg30_model.keras')
 	
 	# blinks is the number of total blinks ,close_counter
 	# the counter for consecutive close predictions
@@ -150,25 +150,30 @@ def main():
 		cv2.rectangle(frame, (right_eye_rect[0], right_eye_rect[1]), (right_eye_rect[2], right_eye_rect[3]), (0, 255, 0), 2)
 
 
+		leftEyePrediction = model.predict(cnnPreprocess(left_eye))
+		rightEyePrediction = model.predict(cnnPreprocess(right_eye))
+		cv2.putText(frame, f'Left Eye: {leftEyePrediction}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+		cv2.putText(frame, f'Right Eye: {rightEyePrediction}', (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+
 		# average the predictions of the two eyes 
-		prediction = (model.predict(cnnPreprocess(left_eye)) + model.predict(cnnPreprocess(right_eye)))/2.0
+		# prediction = (model.predict(cnnPreprocess(left_eye)) + model.predict(cnnPreprocess(right_eye)))/2.0
 			
-		# blinks
-		# if the eyes are open reset the counter for close eyes
-		if prediction > 0.5 :
-			state = 'open'
-			close_counter = 0
-		else:
-			state = 'close'
-			close_counter += 1
+		# # blinks
+		# # if the eyes are open reset the counter for close eyes
+		# if prediction > 0.5 :
+		# 	state = 'open'
+		# 	close_counter = 0
+		# else:
+		# 	state = 'close'
+		# 	close_counter += 1
 		
 		# if the eyes are open and previousle were closed
 		# for sufficient number of frames then increcement 
 		# the total blinks
-		if state == 'open' and mem_counter > 1:
-			blinks += 1
-		# keep the counter for the next loop 
-		mem_counter = close_counter 
+		# if state == 'open' and mem_counter > 1:
+		# 	blinks += 1
+		# # keep the counter for the next loop 
+		# mem_counter = close_counter 
 
 		# draw the total number of blinks on the frame along with
 		# the state for the frame

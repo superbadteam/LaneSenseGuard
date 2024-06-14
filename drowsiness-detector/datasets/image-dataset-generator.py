@@ -5,12 +5,16 @@ import os
 import uuid
 from dotenv import load_dotenv
 from pathlib import Path
+from tensorflow.keras.models import load_model
+import numpy as np
+import matplotlib.pyplot as plt
+import time
 
 dotenv_path = Path('../../.env')
 load_dotenv(dotenv_path=dotenv_path)
 
-DATASET_IMAGE_PATH = os.getenv('DATASET_IMAGE_PATH')
-
+# DATASET_IMAGE_PATH = os.getenv('DATASET_IMAGE_PATH')
+DATASET_IMAGE_PATH = '/Users/phuc1403/Downloads/untitled folder'
 print(DATASET_IMAGE_PATH)
 
 dirname = os.path.dirname(__file__)
@@ -39,21 +43,23 @@ def detect(img, cascade = face_cascade , minimumFeatureSize=(20, 20)):
 
 class RightEye:
     def __init__(self, eye):
-        self.x_min = eye[:, 0].min() - 4
-        self.x_max = eye[:, 0].max() + 20
-        self.y_min = eye[:, 1].min() - 22
+        self.x_min = eye[:, 0].min() - 8
+        self.x_max = eye[:, 0].max() + 30
+        self.y_min = eye[:, 1].min() - 40
         self.y_max = eye[:, 1].max()
         self.width = self.x_max - self.x_min
-        self.height = int(self.width * (26/34))
+        # self.height = int(self.width * (26/34))
+        self.height = self.width
         
 class LeftEye:
     def __init__(self, eye):
-        self.x_min = eye[:, 0].min() - 20
-        self.x_max = eye[:, 0].max() + 4
-        self.y_min = eye[:, 1].min() - 22
+        self.x_min = eye[:, 0].min() - 30
+        self.x_max = eye[:, 0].max() + 8
+        self.y_min = eye[:, 1].min() - 40
         self.y_max = eye[:, 1].max()
         self.width = self.x_max - self.x_min
-        self.height = int(self.width * (26/34))
+        # self.height = int(self.width * (26/34))
+        self.height = self.width
 
 def getFace(frame, gray):
     def getFirstFace(te):
@@ -100,7 +106,7 @@ def getEyes(face, gray):
     return LeftEye(leftEye), RightEye(rightEye)
 
 def saveImage(frame, eye):
-    subfolder_name = "gen_close"
+    subfolder_name = "closed_Nhan"
     subfolder_path = os.path.join(DATASET_IMAGE_PATH, subfolder_name)
 
     if not os.path.exists(subfolder_path):
@@ -108,15 +114,44 @@ def saveImage(frame, eye):
 
     roi = frame[eye.y_min : eye. y_min + eye.height, eye.x_min : eye.x_min + eye.width]
 
-    roi = cv2.resize(roi, (34, 26))
+    roi = cv2.resize(roi, (32, 32))
     
     random_filename = str(uuid.uuid4()) + ".jpg"
 
     cv2.imwrite(os.path.join(subfolder_path, random_filename), roi)
 
+def preprocessEye(frame, eye):
+    roi = frame[eye.y_min : eye. y_min + eye.height, eye.x_min : eye.x_min + eye.width]
+
+    # Extract the region of interest (ROI) for the right eye
+    cv2.imshow('Eye 2', roi)
+    
+    # Resize the extracted eye image to the target size
+    eyeResized = cv2.resize(roi, (32, 32))
+    image_np = np.array(eyeResized)
+    image_np = image_np.reshape(1, 32, 32, 3)
+    # # Normalize the image (depending on the model requirements, e.g., scale to [0, 1])
+    # preprocessedEye = eyeResized.astype('float32') / 255.0
+
+    # # Expand dimensions to match the input shape of the model (batch_size, height, width, channels)
+    # preprocessedEye = np.expand_dims(preprocessedEye, axis=0)
+
+    return image_np
+
+def predict(model, eye):
+    classes = ['Open', 'Closed']
+    prediction = model.predict(eye)
+    print("eye prediction", prediction)
+    predicted_label = np.argmax(prediction)
+    predicted_class = classes[predicted_label]
+    return predicted_class
+    
 def main():
     camera = cv2.VideoCapture(0)
-	
+    
+    # model_path = os.path.join(dirname, "../models/vgg30_model.keras")
+    # model = load_model(model_path)
+    
     while True:
         ret, frame = camera.read()
 
@@ -128,22 +163,24 @@ def main():
             continue
 
         leftEye, rightEye = getEyes(face, gray)
-        
+        # saveImage(frame, leftEye)
+        # saveImage(frame, rightEye)
         # cv2.rectangle(frame, (leftEye.x_min, leftEye.y_min ), (leftEye.x_min + leftEye.width, leftEye.y_min + leftEye.height), (0, 255, 0), 2)
-
         # cv2.rectangle(frame, (rightEye.x_min, rightEye.y_min ), (rightEye.x_min + rightEye.width, rightEye.y_min + rightEye.height), (0, 255, 0), 2)
         
-        saveImage(frame, leftEye)
-        saveImage(frame, rightEye)
-        
+        preprocessedLeftEye = preprocessEye(frame, leftEye)
+        preprocessedRightEye = preprocessEye(frame, rightEye)
+        leftEyePrediction = predict(model, preprocessedLeftEye)
+        rightEyePrediction = predict(model, preprocessedRightEye)
+        cv2.putText(frame, f'Left Eye: {leftEyePrediction}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+        cv2.putText(frame, f'Right Eye: {rightEyePrediction}', (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+
         cv2.imshow('dataset generator', frame)
   
         key = cv2.waitKey(1) & 0xFF
 
-		# if the `q` key was pressed, break from the loop
         if key == ord('q'):
             break
-	# do a little clean up
     cv2.destroyAllWindows()
     del(camera)
 
