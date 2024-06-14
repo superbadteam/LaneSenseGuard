@@ -1,92 +1,99 @@
-import socket
-import json
-import threading
+import asyncio
+import websockets
 
-# Thông tin server
-server_host = '0.0.0.0'
-server_port = 12345
+connected_clients = set()
 
-# Thông tin client
-client_host = 'your_vps_ip'  # Thay thế bằng IP của VPS
-client_port = 12345
+async def handler(websocket, path):
+    global system_status
+    count_distracted = 0
+    count_wrong_lane = 0
 
-def run_server():
-    # Khởi tạo socket server
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.bind((server_host, server_port))
-
-    # Lắng nghe kết nối
-    print('Server IP:', socket.gethostbyname(socket.gethostname()))
-    server_socket.listen(5)
-    print('Server listening....')
-
-    while True:
-        client_socket, addr = server_socket.accept()
-        print('Got connection from', addr)
-        while True:
-            try:
-                data = client_socket.recv(1024)
-                if not data:
-                    print('Client disconnected')
-                    break
-                data = data.decode()
-                # split string like lane:right
-                data = data.split(':')
-                print('Received:', data)
-                if data[0] == 'lane':
-                    print('Lane:', data[1])
-                if data[0] == 'face':
-                    print('Face:', data[1])
-                # Gửi phản hồi về client
-                response = f"Received {data[0]} data with value {data[1]}"
-                client_socket.send(response.encode())
-            except Exception as e:
-                print(e)
-                break
-        client_socket.close()
-
-def run_client():
-    # Khởi tạo socket client
-    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client_socket.connect((client_host, client_port))
-
-    # Gửi dữ liệu đến server
-    messages = [
-        "lane:right",
-        "face:detected"
-    ]
-
-    for message in messages:
-        client_socket.send(message.encode())
-        print('Sent:', message)
-        
-        # Nhận phản hồi từ server
-        data = client_socket.recv(1024)
-        if not data:
-            break
-        print('Received from server:', data.decode())
-    
-    # Liên tục lắng nghe dữ liệu từ server
+    connected_clients.add(websocket)
+    print('Got connection from', websocket.remote_address)
     try:
-        while True:
-            data = client_socket.recv(1024)
-            if not data:
-                break
-            print('Received from server:', data.decode())
+         while True:
+         # Receive a message from the client
+            message = await websocket.recv()
+            print('Received:', message)
+            for client in connected_clients:
+                await client.send(message)
+            data = message.split(':')
+
+            # handle lane
+            if data[0] == 'lane':
+                if data[1] == 'wrong':
+                    count_distracted += 1
+                    if count_distracted == 3:
+                        print('Driver is distracted')
+                    if count_distracted == 5:
+                        print('Driver is extremely distracted')
+                else:
+                    count_distracted = 0
+            print('Lane:', data[1], count_distracted)
+
+            # handle face
+            if data[0] == 'face':
+                print('Face:', data[1])
+                if data[1] == 'detected':
+                    count_wrong_lane += 1
+                    if count_wrong_lane == 3:
+                        print('Driver is not looking at the road')
+                    if count_wrong_lane == 5:
+                        print('Driver is extremely not looking at the road')
+                else:
+                    count_wrong_lane = 0
+
+    except websockets.ConnectionClosed:
+        print('Client disconnected')
     except Exception as e:
         print(e)
-    
-    # Đóng kết nối
-    client_socket.close()
+    finally:
+        connected_clients.remove(websocket)
 
-# Tạo và chạy thread cho server
-server_thread = threading.Thread(target=run_server)
-server_thread.start()
+async def run_server():
+    server = await websockets.serve(handler, "0.0.0.0", 12345)
+    print('Server listening on ws://0.0.0.0:12345')
+    await server.wait_closed()
 
-# Tạo và chạy thread cho client
-client_thread = threading.Thread(target=run_client)
-client_thread.start()
+### Client WebSocket
 
-# Đợi các thread hoàn thành
-server_thread.join()
-client_thread.join()
+ON = 1
+OFF = 0
+system_status = ON
+
+async def run_client():
+    global system_status
+    uri = "ws://103.77.246.238:8765"  # Thay thế bằng IP của VPS
+
+    async with websockets.connect(uri) as websocket:
+        try:
+            while True:
+                data = await websocket.recv()
+                data = data.split(':')
+
+                if data[0].strip() == "system":
+                    if data[1] == 'on':
+                        system_status = ON
+                        print('System is ON')
+                    else:
+                        system_status = OFF
+                        print('System is OFF')
+                else:
+                    print('Not a system message', data[0].strip(),"system")
+                print('Received from server:', data[0], data[1])
+        except websockets.ConnectionClosed:
+            print("Connection closed")
+        except Exception as e:
+            print(e)
+
+async def main():
+    server_task = asyncio.create_task(run_server())
+    client_task = asyncio.create_task(run_client())
+
+    await asyncio.gather(server_task, client_task)
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("Interrupted by user. Shutting down...")
