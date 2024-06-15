@@ -146,44 +146,108 @@ def predict(model, eye):
     predicted_class = classes[predicted_label]
     return predicted_class
     
-def main():
-    camera = cv2.VideoCapture(0)
+# def main():
+#     camera = cv2.VideoCapture(0)
     
-    # model_path = os.path.join(dirname, "../models/vgg30_model.keras")
-    # model = load_model(model_path)
+#     model_path = os.path.join(dirname, "../models/vgg30_model_Nhan_v1.keras")
+#     model = load_model(model_path)
     
-    while True:
-        ret, frame = camera.read()
+#     while True:
+#         ret, frame = camera.read()
 
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+#         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         
-        face = getFace(frame, gray)
+#         face = getFace(frame, gray)
         
-        if face is None:
-            continue
+#         if face is None:
+#             continue
 
-        leftEye, rightEye = getEyes(face, gray)
-        # saveImage(frame, leftEye)
-        # saveImage(frame, rightEye)
-        # cv2.rectangle(frame, (leftEye.x_min, leftEye.y_min ), (leftEye.x_min + leftEye.width, leftEye.y_min + leftEye.height), (0, 255, 0), 2)
-        # cv2.rectangle(frame, (rightEye.x_min, rightEye.y_min ), (rightEye.x_min + rightEye.width, rightEye.y_min + rightEye.height), (0, 255, 0), 2)
+#         leftEye, rightEye = getEyes(face, gray)
+#         saveImage(frame, leftEye)
+#         saveImage(frame, rightEye)
+#         cv2.rectangle(frame, (leftEye.x_min, leftEye.y_min ), (leftEye.x_min + leftEye.width, leftEye.y_min + leftEye.height), (0, 255, 0), 2)
+#         cv2.rectangle(frame, (rightEye.x_min, rightEye.y_min ), (rightEye.x_min + rightEye.width, rightEye.y_min + rightEye.height), (0, 255, 0), 2)
         
-        preprocessedLeftEye = preprocessEye(frame, leftEye)
-        preprocessedRightEye = preprocessEye(frame, rightEye)
-        leftEyePrediction = predict(model, preprocessedLeftEye)
-        rightEyePrediction = predict(model, preprocessedRightEye)
-        cv2.putText(frame, f'Left Eye: {leftEyePrediction}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-        cv2.putText(frame, f'Right Eye: {rightEyePrediction}', (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+#         preprocessedLeftEye = preprocessEye(frame, leftEye)
+#         preprocessedRightEye = preprocessEye(frame, rightEye)
+#         leftEyePrediction = predict(model, preprocessedLeftEye)
+#         rightEyePrediction = predict(model, preprocessedRightEye)
+#         cv2.putText(frame, f'Left Eye: {leftEyePrediction}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+#         cv2.putText(frame, f'Right Eye: {rightEyePrediction}', (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
 
-        cv2.imshow('dataset generator', frame)
+#         cv2.imshow('dataset generator', frame)
   
-        key = cv2.waitKey(1) & 0xFF
+#         key = cv2.waitKey(1) & 0xFF
 
-        if key == ord('q'):
-            break
-    cv2.destroyAllWindows()
-    del(camera)
+#         if key == ord('q'):
+#             break
+#     cv2.destroyAllWindows()
+#     del(camera)
 
 
-if __name__ == '__main__':
-	main()
+# if __name__ == '__main__':
+# 	main()
+
+
+
+import urllib
+cam2 = "http://192.168.137.9:8000/stream.mjpg"
+stream = urllib.request.urlopen(cam2)
+bytes = bytes()
+frame_per_predict = 5
+frame_counter =0
+import websockets
+import asyncio
+async def send_and_receive():
+    model_path = os.path.join(dirname, "../models/vgg30_model_Nhan_v1.keras")
+    print(model_path)
+    model = load_model(model_path)
+    global bytes, frame_counter
+    uri = "ws://192.168.137.9:12345"
+    async with websockets.connect(uri) as websocket:
+
+        while True:
+            bytes += stream.read(1024)
+            a = bytes.find(b'\xff\xd8')
+            b = bytes.find(b'\xff\xd9')
+            if a != -1 and b != -1:
+                jpg = bytes[a:b+2]
+                bytes = bytes[b+2:]
+                i = cv2.imdecode(np.fromstring(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
+                frame_counter += 1
+                if frame_counter == frame_per_predict:
+                    frame_counter = 0
+                try:    
+                    if frame_counter == 0:   
+                        # perform prediction
+                        gray = cv2.cvtColor(i, cv2.COLOR_BGR2GRAY)
+                        face = getFace(i, gray)
+                        
+                        if face is None:
+                            continue
+                        
+                        leftEye, rightEye = getEyes(face, gray)
+                        preprocessedLeftEye = preprocessEye(i, leftEye)
+                        preprocessedRightEye = preprocessEye(i, rightEye)
+                        leftEyePrediction = predict(model, preprocessedLeftEye)
+                        rightEyePrediction = predict(model, preprocessedRightEye)
+                        print(leftEyePrediction, rightEyePrediction)
+                        if leftEyePrediction == 'Closed' and rightEyePrediction == 'Closed':
+                            print("face:distracted")
+                            await websocket.send("face:distracted")
+                        else:
+                            await websocket.send("face:notdistracted")
+                            print("face:notdistracted")
+                        await websocket.recv()
+
+                    cv2.imshow('i', i)
+
+                    if cv2.waitKey(1) == 27:
+                        exit(0)
+                except Exception as ex:
+                    print(ex)
+
+                    pass
+
+
+asyncio.get_event_loop().run_until_complete(send_and_receive())
