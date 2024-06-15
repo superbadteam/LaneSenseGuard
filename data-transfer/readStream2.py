@@ -27,8 +27,8 @@ predictor = dlib.shape_predictor(predictor_path)
 cascade_path = "././drowsiness-detector/models/haarcascade_frontalface_alt.xml"
 face_cascade = cv2.CascadeClassifier(cascade_path)
 
-drowsy_model = load_model('././drowsiness-detector/models/blinkModel.hdf5')
-drowsy_model.summary()
+# drowsy_model = load_model('././drowsiness-detector/models/blinkModel.hdf5')
+# drowsy_model.summary()
 
 # detect the face rectangle 
 def detect(img, cascade = face_cascade , minimumFeatureSize=(20, 20)):

@@ -1,14 +1,5 @@
 import asyncio
 import websockets
-
-<<<<<<< HEAD
-connected_clients = set()
-
-async def handler(websocket, path):
-    global system_status
-    count_distracted = 0
-    count_wrong_lane = 0
-=======
 import json
 import time
 import RPi.GPIO as GPIO
@@ -106,44 +97,10 @@ def handle_data_from_AI_server(data):
 
 async def handler(websocket, path):
     global system_status
->>>>>>> f36dc270fe70acc0f887d52985abe8c43cb50b06
 
     connected_clients.add(websocket)
     print('Got connection from', websocket.remote_address)
     try:
-<<<<<<< HEAD
-         while True:
-         # Receive a message from the client
-            message = await websocket.recv()
-            print('Received:', message)
-            for client in connected_clients:
-                await client.send(message)
-            data = message.split(':')
-
-            # handle lane
-            if data[0] == 'lane':
-                if data[1] == 'wrong':
-                    count_distracted += 1
-                    if count_distracted == 3:
-                        print('Driver is distracted')
-                    if count_distracted == 5:
-                        print('Driver is extremely distracted')
-                else:
-                    count_distracted = 0
-            print('Lane:', data[1], count_distracted)
-
-            # handle face
-            if data[0] == 'face':
-                print('Face:', data[1])
-                if data[1] == 'detected':
-                    count_wrong_lane += 1
-                    if count_wrong_lane == 3:
-                        print('Driver is not looking at the road')
-                    if count_wrong_lane == 5:
-                        print('Driver is extremely not looking at the road')
-                else:
-                    count_wrong_lane = 0
-=======
 
         async for message in websocket:
             for client in connected_clients:
@@ -156,7 +113,6 @@ async def handler(websocket, path):
             except Exception as e:
                 pass
 
->>>>>>> f36dc270fe70acc0f887d52985abe8c43cb50b06
 
     except websockets.ConnectionClosed:
         print('Client disconnected')
@@ -172,32 +128,6 @@ async def run_server():
 
 ### Client WebSocket
 
-<<<<<<< HEAD
-ON = 1
-OFF = 0
-system_status = ON
-
-async def run_client():
-    global system_status
-    uri = "ws://103.77.246.238:8765"  # Thay thế bằng IP của VPS
-
-    async with websockets.connect(uri) as websocket:
-        try:
-            while True:
-                data = await websocket.recv()
-                data = data.split(':')
-
-                if data[0].strip() == "system":
-                    if data[1] == 'on':
-                        system_status = ON
-                        print('System is ON')
-                    else:
-                        system_status = OFF
-                        print('System is OFF')
-                else:
-                    print('Not a system message', data[0].strip(),"system")
-                print('Received from server:', data[0], data[1])
-=======
 
 async def send_system_status(websocket):
     global system_status
@@ -257,29 +187,21 @@ async def run_client():
                 #     print('Not a system message', data[0].strip(),"system")
                 # print('Received from server:', data[0], data[1])
 
->>>>>>> f36dc270fe70acc0f887d52985abe8c43cb50b06
         except websockets.ConnectionClosed:
             print("Connection closed")
         except Exception as e:
             print(e)
-<<<<<<< HEAD
-
-async def main():
-=======
         finally:
             send_task.cancel()
 
 async def main():
     init_values()
 
->>>>>>> f36dc270fe70acc0f887d52985abe8c43cb50b06
     server_task = asyncio.create_task(run_server())
     client_task = asyncio.create_task(run_client())
 
     await asyncio.gather(server_task, client_task)
 
-<<<<<<< HEAD
-=======
 
 def init_values():
     GPIO.output(BUZZER_PIN, 0)
@@ -287,16 +209,12 @@ def init_values():
     GPIO.output(LED_RIGHT, 0)
     GPIO.output(LED_POWER, 0)
 
->>>>>>> f36dc270fe70acc0f887d52985abe8c43cb50b06
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
         print("Interrupted by user. Shutting down...")
-<<<<<<< HEAD
-=======
 
     finally:
         GPIO.cleanup()
 
->>>>>>> f36dc270fe70acc0f887d52985abe8c43cb50b06
