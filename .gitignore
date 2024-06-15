@@ -65,11 +65,5 @@ lane_data
 train_data
 
 model_trained
-<<<<<<< HEAD
 trained_drowsiness_model
 dlib
-=======
-
-trained_drowsiness_model
-
->>>>>>> f36dc270fe70acc0f887d52985abe8c43cb50b06
