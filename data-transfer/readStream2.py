@@ -6,6 +6,9 @@ import dlib
 from imutils import face_utils
 import os
 import uuid
+import tensorflow
+from tensorflow import keras
+from keras.models import load_model
 # from dotenv import load_dotenv
 from pathlib import Path
 
@@ -23,6 +26,9 @@ predictor = dlib.shape_predictor(predictor_path)
 
 cascade_path = "././drowsiness-detector/models/haarcascade_frontalface_alt.xml"
 face_cascade = cv2.CascadeClassifier(cascade_path)
+
+drowsy_model = load_model('././drowsiness-detector/models/blinkModel.hdf5')
+drowsy_model.summary()
 
 # detect the face rectangle 
 def detect(img, cascade = face_cascade , minimumFeatureSize=(20, 20)):
@@ -116,6 +122,22 @@ def saveImage(frame, eye):
     random_filename = str(uuid.uuid4()) + ".jpg"
 
     cv2.imwrite(os.path.join(subfolder_path, random_filename), roi)
+    
+def process_image(frame):
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        
+    face = getFace(frame, gray)
+    
+    if face is None:
+        return None, None
+
+    leftEye, rightEye = getEyes(face, gray)
+    
+    cv2.rectangle(frame, (leftEye.x_min, leftEye.y_min ), (leftEye.x_min + leftEye.width, leftEye.y_min + leftEye.height), (0, 255, 0), 2)
+
+    cv2.rectangle(frame, (rightEye.x_min, rightEye.y_min ), (rightEye.x_min + rightEye.width, rightEye.y_min + rightEye.height), (0, 255, 0), 2)
+    
+    return leftEye, rightEye
 
 def main():
     camera = cv2.VideoCapture(0)
@@ -157,16 +179,46 @@ if __name__ == '__main__':
 # # cam2 = "http://169.254.142.134:8080/?action=stream"
 # stream = urllib.request.urlopen(cam2)
 # bytes = bytes()
-# while True:
-#     bytes += stream.read(1024)
-#     a = bytes.find(b'\xff\xd8')
-#     b = bytes.find(b'\xff\xd9')
-#     if a != -1 and b != -1:
-#         jpg = bytes[a:b+2]
-#         bytes = bytes[b+2:]
-#         i = cv2.imdecode(np.fromstring(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
-#         cv2.imshow('i', i)
-#         if cv2.waitKey(1) == 27:
-#             exit(0)
+
+# import websockets
+# import asyncio
+# async def send_and_receive():
+#     global bytes, frame_counter
+#     uri = "ws://192.168.145.37:12345"
+#     async with websockets.connect(uri) as websocket:
+
+#         while True:
+#             bytes += stream.read(1024)
+#             a = bytes.find(b'\xff\xd8')
+#             b = bytes.find(b'\xff\xd9')
+#             if a != -1 and b != -1:
+#                 jpg = bytes[a:b+2]
+#                 bytes = bytes[b+2:]
+#                 i = cv2.imdecode(np.fromstring(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
+#                 frame_counter += 1
+#                 if frame_counter == frame_per_predict:
+#                     frame_counter = 0
+#                 try:
+#                     # Get eyes ROI
+#                     LeftEye_roi, RightEye_roi = process_image(i)
+#                     if frame_counter == 0:   
+#                         # perform prediction
+
+#                         await websocket.send("Left eye:" + LeftEye_roi + "Right :" + RightEye_roi)
+#                         response = await websocket.recv()
+
+#                     # print(i.shape)
+
+#                     cv2.imshow('i', i)
+                    
+#                     if cv2.waitKey(1) == 27:
+#                         exit(0)
+#                 except Exception as ex:
+#                     # print(ex)
+
+#                     pass
+                
+
+# asyncio.get_event_loop().run_until_complete(send_and_receive())
 
 # py data-transfer/readStream2.py
