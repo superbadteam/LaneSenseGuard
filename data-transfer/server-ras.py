@@ -1,6 +1,5 @@
 import asyncio
 import websockets
-
 import json
 import time
 import RPi.GPIO as GPIO
